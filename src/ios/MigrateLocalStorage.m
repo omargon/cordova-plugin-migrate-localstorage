@@ -14,7 +14,7 @@
 // #define TARGET_LS_FILEPATH @"WebsiteData/LocalStorage/file__0.localstorage" // original cordova file
 #define TARGET_LS_FILEPATH @"WebKit/WebsiteData/LocalStorage/http_localhost_8080.localstorage"
 #define ORIG_IDB_FILEPATH @"Caches/___IndexedDB/file__0"
-#define TARGET_IDB_FILEPATH @"WebKit/com.infor.gtnexus.gtnmobile/WebsiteData/IndexedDB/file__0"
+#define TARGET_IDB_FILEPATH @"WebKit/WebsiteData/IndexedDB/file__0"
 
 @implementation MigrateLocalStorage
 
