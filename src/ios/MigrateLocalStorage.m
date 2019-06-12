@@ -9,9 +9,19 @@
 #define TAG @"\nMigrateLS"
 
 #define ORIG_FOLDER @"WebKit/LocalStorage"
-#define ORIG_LS_FILEPATH @"Caches/file__0"
-#define ORIG_LS_CACHE @"Caches/file__0"
-#define TARGET_LS_FILEPATH @"WebKit/WebsiteData/WebSQL/file__0"
+#define ORIG_LS_FILEPATH @"WebKit/LocalStorage/file__0.localstorage"
+
+#define ORIG_LS_CACHE @"Caches/file__0.localstorage"
+#define TARGET_LS_FILEPATH @"WebKit/WebsiteData/LocalStorage/file__0.localstorage"
+
+
+#define ORIG_WEBSQL_FILEPATH @"Caches/Databases.db"
+#define TARGET_WEBSQL_FILEPATH @"WebKit/WebsiteData/WebSQL/Databases.db"
+
+#define ORIG_WEBSQL_FILES_FILEPATH @"Caches/file__0"
+#define TARGET_WEBSQL_FILES_FILEPATH @"WebKit/WebsiteData/WebSQL/file__0"
+
+
 #define ORIG_IDB_FILEPATH @"Caches/___IndexedDB/file__0"
 #define TARGET_IDB_FILEPATH @"WebKit/WebsiteData/IndexedDB/file__0"
 
@@ -210,11 +220,82 @@
 
 /** End IndexedDB Functions **/
 
+
+
+/** WebSQL Functions **/
+
+/**
+* Gets filepath of WebSQL file we want to migrate from
+*/
+- (NSString*) resolveOriginalWebSQLFile {
+    NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    NSString* original = [appLibraryFolder stringByAppendingPathComponent:ORIG_WEBSQL_FILEPATH];
+    return original;
+}
+
+/**
+* Gets filepath of WebSQL file we want to migrate to
+*/
+- (NSString*) resolveTargetWebSQLFile {
+    NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+    NSString* target = [appLibraryFolder stringByAppendingPathComponent:TARGET_WEBSQL_FILEPATH];
+    
+    #if TARGET_IPHONE_SIMULATOR
+        // the simulator squeezes the bundle id into the path
+    
+        NSLog(@"%@ 🎮 I am a simulator", TAG);
+        NSString* bundleIdentifier = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleIdentifier"];
+        bundleIdentifier = [@"/" stringByAppendingString:bundleIdentifier];
+            
+        NSMutableString* targetMutable = [NSMutableString stringWithString:target];
+        NSRange range = [targetMutable rangeOfString:@"WebKit"];
+        long idx = range.location + range.length;
+        [targetMutable insertString:bundleIdentifier atIndex:idx];
+
+        return targetMutable;
+    
+    #endif
+
+    return target;
+}
+
+/**
+* Checks if WebSQL file should be migrated. If so, migrate.
+* NOTE: Will only migrate data if there is no WebSQL data for WKWebView. This only happens when WKWebView is set up for the first time.
+*/
+- (BOOL) migrateWebSQL
+{
+    NSLog(@"%@ ▶️ migrating webSQL", TAG);
+    NSString* original = [self resolveOriginalWebSQLFile];
+    NSLog(@"%@ 📦 original %@", TAG, original);
+
+    NSString* target = [self resolveTargetWebSQLFile];
+    NSLog(@"%@ 🏹 target %@", TAG, target);
+    
+    if (![[NSFileManager defaultManager] fileExistsAtPath:target]) {
+        NSLog(@"%@ 🕐 No existing WebSQL data found for WKWebView. Migrating data from UIWebView", TAG);
+        BOOL success = [self move:original to:target];
+        NSLog(@"%@ copy status %d", TAG, success);
+        return success;
+    }
+    else {
+        NSLog(@"%@ ⚪️ found WebSQL data. Not migrating", TAG);
+        return NO;
+    }
+}
+
+/** End WebSQL Functions **/
+
+
+
+
 - (void)pluginInitialize
 {
     BOOL lsResult = [self migrateLocalStorage];
     BOOL idbResult = [self migrateIndexedDB];
-    if (lsResult && idbResult) {
+    BOOL websqlResult = [self migrateWebSQL];
+    
+    if (lsResult && idbResult && websqlResult) {
         // if all successfully migrated, do some cleanup!
         NSString* appLibraryFolder = [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0];
         NSString* originalFolder = [appLibraryFolder stringByAppendingPathComponent:ORIG_FOLDER];
